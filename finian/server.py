@@ -8,6 +8,7 @@ from .connection import Connection
 
 NewConnectionCallbackType = Callable[[Connection], None]
 
+
 class Server(Connection):
     def __init__(self, host: str, port: int):
         super().__init__()
@@ -17,7 +18,6 @@ class Server(Connection):
         self.socket.bind((self.host, self.port))
         self._new_connection_callback: NewConnectionCallbackType = lambda c: None
 
-
     def _setup_connection(self, connection: Connection):
         connection.pubkey = self.pubkey
         connection.privkey = self.privkey
@@ -26,10 +26,8 @@ class Server(Connection):
         self._new_connection_callback(connection)
         connection.listen()
 
-
     def new_connection(self, callback: NewConnectionCallbackType):
         self._new_connection_callback = callback
-
 
     def listen(self):
         self.socket.listen()

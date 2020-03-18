@@ -20,6 +20,7 @@ def protocol_request_pubkey(connection: "Connection", result: Result):
 def protocol_recv_pubkey(connection: "Connection", result: Result):
     connection.recp_pubkey = result.data
 
+
 class Connection:
     def __init__(self, socket: TCPSocket = None):
         if socket is None:
@@ -33,13 +34,11 @@ class Connection:
         self.protocol(1, False)(protocol_request_pubkey)
         self.protocol(2, False)(protocol_recv_pubkey)
 
-
     @property
     def pubkey(self):
         if self._pubkey is None:
             return None
         return self._pubkey.save_pkcs1()
-
 
     @pubkey.setter
     def pubkey(self, value):
@@ -48,30 +47,24 @@ class Connection:
         else:
             self._recp_pubkey = value
 
-
     @property
     def privkey(self):
         return self.socket.privkey
-
 
     @privkey.setter
     def privkey(self, value):
         self.socket.privkey = value
 
-
     @property
     def recp_pubkey(self):
         return self.socket.recp_pubkey
-
 
     @property
     def recp_pubkey(self, value):
         self.socket.recp_pubkey = value
 
-
     def disconnect(self):
         self.socket.disconnect()
-
 
     def protocol(self, protocol: int, threaded: bool = True):
         def setter(callback: RecvCallbackType):
@@ -82,10 +75,8 @@ class Connection:
             self._recv_callbacks[protocol] = threaded_callback if threaded else callback
         return setter
 
-   
     def connection_broke(self, callback: ConnectionBrokeCallbackType):
         self._connection_broke_callback = callback
-
 
     def recv(self) -> Result:
         result = self.socket.recv()
@@ -95,14 +86,12 @@ class Connection:
             result.data = json.loads(result.data.decode())
         return result
 
-
     def send(self, data: DataType, protocol: int = 0):
         json = False
         if isinstance(data, dict):
             data = json.dumps(data).encode()
             json = True
         self.socket.send(data, json, protocol)
-
 
     def listen(self):
         while True:
@@ -115,7 +104,6 @@ class Connection:
             else:
                 callback = self._recv_no_protocol_callback
             callback(self, result)
-
 
     def request_recv_pubkey(self):
         self.socket.send(None, False, 1)

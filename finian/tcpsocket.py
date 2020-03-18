@@ -6,6 +6,7 @@ import struct
 
 from typing import Optional
 
+
 class Result:
     # is encrypted, is json, protocol, data
     def __init__(self, encrypted: bool, json: bool, protocol: int, data: bytes):
@@ -13,6 +14,7 @@ class Result:
         self.json: bool = json
         self.protocol: int = protocol
         self.data = data
+
 
 class TCPSocket:
     def __init__(self, sock: socket.socket = None):
@@ -23,17 +25,14 @@ class TCPSocket:
         self._recp_pubkey: rsa.key.PublicKey = None
         self._privkey: rsa.key.PrivateKey = None
 
-
     def setserveropt(self):
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
 
     @property
     def recp_pubkey(self):
         if self._recp_pubkey is None:
             return None
         return self._recp_pubkey.save_pkcs1()
-
 
     @recp_pubkey.setter
     def recp_pubkey(self, value):
@@ -42,13 +41,11 @@ class TCPSocket:
         else:
             self._recp_pubkey = value
 
-
     @property
     def privkey(self):
         if self._privkey is None:
             return None
         return self._privkey.save_pkcs1()
-
 
     @privkey.setter
     def privkey(self, value):
@@ -57,26 +54,21 @@ class TCPSocket:
         else:
             self._privkey = value
 
-
     @property
     def bind(self):
         return self.socket.bind
 
-   
     @property
     def listen(self):
         return self.socket.listen
-
 
     @property
     def connect(self):
         return self.socket.connect
 
-
     def accept(self):
         conn, _ = self.socket.accept()
         return TCPSocket(conn)
-
 
     def send(self, data: bytes, json: bool = True, protocol: int = 0):
         if data is None:
@@ -86,7 +78,6 @@ class TCPSocket:
         # data size, is encrypted, is json, protocol
         header = struct.pack("I??H", len(data), self._recp_pubkey is not None, json, protocol)
         self.socket.sendall(header + data)
-
 
     def recv(self) -> Optional[Result]:
         # data size, is encrypted, is json, protocol
@@ -106,7 +97,6 @@ class TCPSocket:
             data = None
         # is encrypted, is json, protocol, data
         return Result(encrypted, header[2], header[3], data)
-
 
     def disconnect(self):
         self.socket.shutdown(socket.SHUT_RDWR)
