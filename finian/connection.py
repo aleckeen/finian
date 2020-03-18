@@ -3,10 +3,15 @@
 import rsa
 import json
 import threading
+import sys
 
 from typing import Dict, Any, Callable, Union, Tuple
 
 from .tcpsocket import TCPSocket, Result
+from .ctx import ConnContext
+from .signals import conncontext_tearing_down
+
+_sentinel = object()
 
 DataType = Union[Dict[str, Any], bytes]
 RecvCallbackType = Callable[["Connection", Result], None]
@@ -33,6 +38,21 @@ class Connection:
         self._pubkey: rsa.key.PublicKey = None
         self.protocol(1, False)(protocol_request_pubkey)
         self.protocol(2, False)(protocol_recv_pubkey)
+        self.teardown_conncontext_funcs = []
+
+    def teardown_conncontext(self, f):
+        self.teardown_appcontext_funcs.append(f)
+        return f
+
+    def conn_context(self):
+        return ConnContext(self)
+
+    def do_teardown_conncontext(self, exc=_sentinel):
+        if exc is _sentinel:
+            exc = sys.exc_info()[1]
+        for func in reversed(self.teardown_conncontext_funcs):
+            func(exc)
+        conncontext_tearing_down.send(self, exc=exc)
 
     @property
     def pubkey(self):
