@@ -1,27 +1,27 @@
 #!/usr/bin/env python3
 
-import rsa
 import json
-import threading
 import sys
+import threading
+from typing import Any, Callable, Dict, Optional
 
-from typing import Dict, Any, Callable, Union, Tuple
+import rsa
 
-from .tcpsocket import TCPSocket, Result
 from .ctx import ConnContext
-from .signals import conncontext_tearing_down
+from .tcpsocket import Result, TCPSocket, DataType
 
 _sentinel = object()
 
-DataType = Union[Dict[str, Any], bytes]
 RecvCallbackType = Callable[["Connection", Result], None]
 ConnectionBrokeCallbackType = Callable[["Connection"], None]
 
+
 # Protocol 1
-def protocol_request_pubkey(connection: "Connection", result: Result):
+def protocol_request_pubkey(connection: "Connection", _):
     connection.send(connection.pubkey, 2)
 
-#Protocol 2
+
+# Protocol 2
 def protocol_recv_pubkey(connection: "Connection", result: Result):
     connection.recp_pubkey = result.data
 
@@ -35,24 +35,23 @@ class Connection:
         self._recv_callbacks: Dict[int, RecvCallbackType] = {}
         self._recv_no_protocol_callback: RecvCallbackType = lambda c, r: None
         self._connection_broke_callback: ConnectionBrokeCallbackType = lambda c: None
-        self._pubkey: rsa.key.PublicKey = None
+        self._pubkey: Optional[rsa.key.PublicKey] = None
         self.protocol(1, False)(protocol_request_pubkey)
         self.protocol(2, False)(protocol_recv_pubkey)
-        self.teardown_conncontext_funcs = []
+        self.teardown_conn_context_funcs = []
 
-    def teardown_conncontext(self, f):
-        self.teardown_appcontext_funcs.append(f)
+    def teardown_conn_context(self, f):
+        self.teardown_conn_context_funcs.append(f)
         return f
 
     def conn_context(self):
         return ConnContext(self)
 
-    def do_teardown_conncontext(self, exc=_sentinel):
+    def do_teardown_conn_context(self, exc=_sentinel):
         if exc is _sentinel:
             exc = sys.exc_info()[1]
-        for func in reversed(self.teardown_conncontext_funcs):
+        for func in reversed(self.teardown_conn_context_funcs):
             func(exc)
-        conncontext_tearing_down.send(self, exc=exc)
 
     @property
     def pubkey(self):
@@ -65,7 +64,7 @@ class Connection:
         if isinstance(value, bytes):
             self._pubkey = rsa.key.PublicKey.load_pkcs1(value)
         else:
-            self._recp_pubkey = value
+            self._pubkey = value
 
     @property
     def privkey(self):
@@ -79,7 +78,7 @@ class Connection:
     def recp_pubkey(self):
         return self.socket.recp_pubkey
 
-    @property
+    @recp_pubkey.setter
     def recp_pubkey(self, value):
         self.socket.recp_pubkey = value
 
@@ -87,18 +86,20 @@ class Connection:
         self.socket.disconnect()
 
     def protocol(self, protocol: int, threaded: bool = True):
-        def setter(callback: RecvCallbackType):
+        def decorator(callback: RecvCallbackType):
             def threaded_callback(*args):
                 thread = threading.Thread(target=callback, args=args)
                 thread.daemon = True
-                thread.run()
+                thread.start()
+
             self._recv_callbacks[protocol] = threaded_callback if threaded else callback
-        return setter
+
+        return decorator
 
     def connection_broke(self, callback: ConnectionBrokeCallbackType):
         self._connection_broke_callback = callback
 
-    def recv(self) -> Result:
+    def recv(self) -> Optional[Result]:
         result = self.socket.recv()
         if result is None:
             return None
@@ -107,11 +108,11 @@ class Connection:
         return result
 
     def send(self, data: DataType, protocol: int = 0):
-        json = False
+        is_json = False
         if isinstance(data, dict):
             data = json.dumps(data).encode()
-            json = True
-        self.socket.send(data, json, protocol)
+            is_json = True
+        self.socket.send(data, is_json, protocol)
 
     def listen(self):
         while True:

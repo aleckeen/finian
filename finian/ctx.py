@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 import sys
+
 from .globals import _conn_ctx_stack
-from .signals import conncontext_pushed
-from .signals import conncontext_popped
 
 _sentinel = object()
 
@@ -18,7 +17,6 @@ class ConnContext:
         if hasattr(sys, "exc_clear"):
             sys.exc_clear()
         _conn_ctx_stack.push(self)
-        conncontext_pushed.send(self.conn)
 
     def pop(self, exc=_sentinel):
         try:
@@ -26,11 +24,10 @@ class ConnContext:
             if self._refcnt <= 0:
                 if exc is _sentinel:
                     exc = sys.exc_info()[1]
-                self.conn.do_teardown_conncontext(exc)
+                self.conn.do_teardown_conn_context(exc)
         finally:
             rv = _conn_ctx_stack.pop()
-        assert rv is self, "Popped wrong conn context.  (%r insted of %r)" % (rv, self)
-        conncontext_popped.send(self.conn)
+        assert rv is self, "Popped wrong conn context.  (%r instead of %r)" % (rv, self)
 
     def __enter__(self):
         self.push()

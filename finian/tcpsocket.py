@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 
-import rsa
 import socket
 import struct
+from typing import Optional, Union, Dict, Any
 
-from typing import Optional
+import rsa
+
+DataType = Union[Dict[str, Any], bytes]
 
 
 class Result:
     # is encrypted, is json, protocol, data
-    def __init__(self, encrypted: bool, json: bool, protocol: int, data: bytes):
+    def __init__(self, encrypted: bool, is_json: bool, protocol: int, data: DataType):
         self.encrypted: bool = encrypted
-        self.json: bool = json
+        self.json: bool = is_json
         self.protocol: int = protocol
-        self.data = data
+        self.data: DataType = data
 
 
 class TCPSocket:
@@ -22,8 +24,8 @@ class TCPSocket:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         else:
             self.socket = sock
-        self._recp_pubkey: rsa.key.PublicKey = None
-        self._privkey: rsa.key.PrivateKey = None
+        self._recp_pubkey: Optional[rsa.key.PublicKey] = None
+        self._privkey: Optional[rsa.key.PrivateKey] = None
 
     def setserveropt(self):
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -70,13 +72,13 @@ class TCPSocket:
         conn, _ = self.socket.accept()
         return TCPSocket(conn)
 
-    def send(self, data: bytes, json: bool = True, protocol: int = 0):
+    def send(self, data: Optional[bytes], is_json: bool = True, protocol: int = 0):
         if data is None:
             data = "".encode()
         if self._recp_pubkey is not None:
             data = rsa.encrypt(data, self._recp_pubkey)
         # data size, is encrypted, is json, protocol
-        header = struct.pack("I??H", len(data), self._recp_pubkey is not None, json, protocol)
+        header = struct.pack("I??H", len(data), self._recp_pubkey is not None, is_json, protocol)
         self.socket.sendall(header + data)
 
     def recv(self) -> Optional[Result]:
