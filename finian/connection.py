@@ -4,6 +4,7 @@ import json
 import sys
 import threading
 from typing import Any, Callable, Dict, Optional
+from io import BytesIO
 
 import rsa
 
@@ -34,7 +35,8 @@ class Connection:
         self.session: Dict[str, Any] = {}
         self._recv_callbacks: Dict[int, RecvCallbackType] = {}
         self._recv_no_protocol_callback: RecvCallbackType = lambda c, r: None
-        self._connection_broke_callback: ConnectionBrokeCallbackType = lambda c: None
+        self._connection_broke_callback: ConnectionBrokeCallbackType = \
+            lambda c: None
         self._pubkey: Optional[rsa.key.PublicKey] = None
         self.protocol(1, False)(protocol_request_pubkey)
         self.protocol(2, False)(protocol_recv_pubkey)
@@ -92,7 +94,8 @@ class Connection:
                 thread.daemon = True
                 thread.start()
 
-            self._recv_callbacks[protocol] = threaded_callback if threaded else callback
+            self._recv_callbacks[protocol] = \
+                threaded_callback if threaded else callback
 
         return decorator
 
@@ -104,15 +107,16 @@ class Connection:
         if result is None:
             return None
         if not result.encrypted and result.json:
-            result.data = json.loads(result.data.decode())
+            result.data = json.load(BytesIO(result.data))
         return result
 
     def send(self, data: DataType, protocol: int = 0):
         is_json = False
         if isinstance(data, dict):
-            data = json.dumps(data).encode()
+            data = BytesIO()
+            json.dump(data, data)
             is_json = True
-        self.socket.send(data, is_json, protocol)
+        self.socket.send(data.getvalue(), is_json, protocol)
 
     def listen(self):
         while True:
