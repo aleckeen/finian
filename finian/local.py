@@ -74,6 +74,7 @@ class LocalStack:
         """Pushes a new item to the stack"""
         rv = getattr(self._local, "stack", None)
         if rv is None:
+            # noinspection PyDunderSlots,PyUnresolvedReferences
             self._local.stack = rv = []
         rv.append(obj)
         return rv
@@ -102,6 +103,7 @@ class LocalStack:
             return None
 
 
+# noinspection PyArgumentList
 class LocalProxy:
     def __init__(self, local, name=None):
         object.__setattr__(self, "_LocalProxy__local", local)

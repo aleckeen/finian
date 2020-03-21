@@ -11,7 +11,8 @@ DataType = Union[Dict[str, Any], bytes]
 
 class Result:
     # is encrypted, is json, protocol, data
-    def __init__(self, encrypted: bool, is_json: bool, protocol: int, data: DataType):
+    def __init__(self, encrypted: bool, is_json: bool,
+                 protocol: int, data: DataType):
         self.encrypted: bool = encrypted
         self.json: bool = is_json
         self.protocol: int = protocol
@@ -72,13 +73,17 @@ class TCPSocket:
         conn, _ = self.socket.accept()
         return TCPSocket(conn)
 
-    def send(self, data: Optional[bytes], is_json: bool = True, protocol: int = 0):
+    def send(self, data: Optional[bytes], is_json: bool = True,
+             protocol: int = 0):
         if data is None:
             data = "".encode()
         if self._recp_pubkey is not None:
             data = rsa.encrypt(data, self._recp_pubkey)
         # data size, is encrypted, is json, protocol
-        header = struct.pack("I??H", len(data), self._recp_pubkey is not None, is_json, protocol)
+        header = struct.pack(
+            "I??H", len(data), self._recp_pubkey is not None,
+            is_json, protocol
+        )
         self.socket.sendall(header + data)
 
     def recv(self) -> Optional[Result]:
