@@ -115,8 +115,9 @@ class Connection:
         if isinstance(data, dict):
             data = BytesIO()
             json.dump(data, data)
+            data = data.getvalue()
             is_json = True
-        self.socket.send(data.getvalue(), is_json, protocol)
+        self.socket.send(data, is_json, protocol)
 
     def listen(self):
         while True:
