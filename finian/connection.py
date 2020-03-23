@@ -123,6 +123,8 @@ class Connection:
             if result is None:
                 self._connection_broke_callback(self)
                 break
+            if result.protocol == 0:
+                continue
             if result.protocol in self._recv_callbacks:
                 callback = self._recv_callbacks[result.protocol]
             else:

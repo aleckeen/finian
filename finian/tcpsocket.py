@@ -88,7 +88,10 @@ class TCPSocket:
 
     def recv(self) -> Optional[Result]:
         # data size, is encrypted, is json, protocol
-        header = struct.unpack("I??H", self.socket.recv(8))
+        head = self.socket.recv(8)
+        if head == b'':
+            return Result(False, False, 0, head)
+        header = struct.unpack("I??H", head)
         if header is None:
             return None
         data = self.socket.recv(header[0])
