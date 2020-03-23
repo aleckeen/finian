@@ -107,15 +107,13 @@ class Connection:
         if result is None:
             return None
         if not result.encrypted and result.json:
-            result.data = json.load(BytesIO(result.data))
+            result.data = json.loads(result.data.decode())
         return result
 
     def send(self, data: DataType, protocol: int = 0):
         is_json = False
         if isinstance(data, dict):
-            data_io = BytesIO()
-            json.dump(data, data_io)
-            data = data_io.getvalue()
+            data = json.dumps(data).encode()
             is_json = True
         self.socket.send(data, is_json, protocol)
 
