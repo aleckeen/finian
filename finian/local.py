@@ -148,6 +148,8 @@ class LocalProxy:
     def __getattr__(self, name):
         if name == "__members__":
             return dir(self.get_current_object())
+        if name == "get_current_object":
+            return self.get_current_object()
         return getattr(self.get_current_object(), name)
 
     def __setitem__(self, key, value):
