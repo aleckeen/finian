@@ -4,9 +4,10 @@ import json
 import sys
 import threading
 from typing import Any, Callable, Dict, Optional
-from io import BytesIO
 
-import rsa
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 from .ctx import ConnContext
 from .tcpsocket import Result, TCPSocket, DataType
@@ -37,7 +38,7 @@ class Connection:
         self._recv_no_protocol_callback: RecvCallbackType = lambda c, r: None
         self._connection_broke_callback: ConnectionBrokeCallbackType = \
             lambda c: None
-        self._pubkey: Optional[rsa.key.PublicKey] = None
+        self._pubkey: Optional[rsa.RSAPublicKey] = None
         self.protocol(1, False)(protocol_request_pubkey)
         self.protocol(2, False)(protocol_recv_pubkey)
         self.teardown_conn_context_funcs = []
@@ -64,7 +65,10 @@ class Connection:
     @pubkey.setter
     def pubkey(self, value):
         if isinstance(value, bytes):
-            self._pubkey = rsa.key.PublicKey.load_pkcs1(value)
+            self._pubkey = serialization.load_pem_public_key(
+                value,
+                backend=default_backend()
+            )
         else:
             self._pubkey = value
 

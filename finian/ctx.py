@@ -27,7 +27,7 @@ class ConnContext:
                 self.conn.do_teardown_conn_context(exc)
         finally:
             rv = _conn_ctx_stack.pop()
-        assert(
+        assert (
                 rv is self
         ), "Popped wrong conn context.  (%r instead of %r)" % (rv, self)
 

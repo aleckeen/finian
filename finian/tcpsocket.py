@@ -4,7 +4,11 @@ import socket
 import struct
 from typing import Optional, Union, Dict, Any
 
-import rsa
+# import rsa
+# from cryptography.fernet import Fernet
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
 
 DataType = Union[Dict[str, Any], bytes]
 
@@ -25,8 +29,8 @@ class TCPSocket:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         else:
             self.socket = sock
-        self._recp_pubkey: Optional[rsa.key.PublicKey] = None
-        self._privkey: Optional[rsa.key.PrivateKey] = None
+        self._recp_pubkey: Optional[rsa.RSAPublicKey] = None
+        self._privkey: Optional[rsa.RSAPrivateKey] = None
 
     def setserveropt(self):
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -40,7 +44,10 @@ class TCPSocket:
     @recp_pubkey.setter
     def recp_pubkey(self, value):
         if isinstance(value, bytes):
-            self._recp_pubkey = rsa.key.PublicKey.load_pkcs1(value)
+            self._recp_pubkey = serialization.load_pem_public_key(
+                value,
+                backend=default_backend()
+            )
         else:
             self._recp_pubkey = value
 
@@ -53,7 +60,11 @@ class TCPSocket:
     @privkey.setter
     def privkey(self, value):
         if isinstance(value, bytes):
-            self._privkey = rsa.key.PrivateKey.load_pkcs1(value)
+            self._privkey = serialization.load_pem_private_key(
+                value,
+                password=None,
+                backend=default_backend()
+            )
         else:
             self._privkey = value
 
@@ -78,7 +89,19 @@ class TCPSocket:
         if data is None:
             data = "".encode()
         if self._recp_pubkey is not None:
-            data = rsa.encrypt(data, self._recp_pubkey)
+            data = self._recp_pubkey.encrypt(
+                data,
+                padding=padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
+            )
+            # key = Fernet.generate_key()
+            # f = Fernet(key)
+            # token = f.encrypt(data)
+            # key_token = rsa.encrypt(key, self._recp_pubkey)
+            # data = struct.pack("H", len(key_token)) + key_token + token
         # data size, is encrypted, is json, protocol
         header = struct.pack(
             "I??H", len(data), self._recp_pubkey is not None,
@@ -100,7 +123,19 @@ class TCPSocket:
         encrypted = False
         if header[1]:
             if self._privkey is not None:
-                data = rsa.decrypt(data, self._privkey)
+                data = self._privkey.decrypt(
+                    data,
+                    padding=padding.OAEP(
+                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                        algorithm=hashes.SHA256(),
+                        label=None
+                    )
+                )
+                # key_token_size = struct.unpack("H", data[0:2])[0]
+                # key_token = data[2:2+key_token_size]
+                # key = rsa.decrypt(key_token, self._privkey)
+                # f = Fernet(key)
+                # data = f.decrypt(data[2+key_token_size:])
             else:
                 encrypted = True
         if len(data) == 0:
