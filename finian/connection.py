@@ -60,7 +60,10 @@ class Connection:
     def pubkey(self):
         if self._pubkey is None:
             return None
-        return self._pubkey.save_pkcs1()
+        return self._pubkey.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.PKCS1
+        )
 
     @pubkey.setter
     def pubkey(self, value):

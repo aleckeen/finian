@@ -39,7 +39,10 @@ class TCPSocket:
     def recp_pubkey(self):
         if self._recp_pubkey is None:
             return None
-        return self._recp_pubkey.save_pkcs1()
+        return self._recp_pubkey.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
 
     @recp_pubkey.setter
     def recp_pubkey(self, value):
@@ -55,7 +58,11 @@ class TCPSocket:
     def privkey(self):
         if self._privkey is None:
             return None
-        return self._privkey.save_pkcs1()
+        return self._privkey.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption()
+        )
 
     @privkey.setter
     def privkey(self, value):
