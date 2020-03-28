@@ -116,15 +116,21 @@ class TCPSocket:
         )
         self.socket.sendall(header + data)
 
+    def _recv(self, size: int) -> bytes:
+        buf = b''
+        while len(buf) != size:
+            buf += self.socket.recv(size - len(buf))
+        return buf
+
     def recv(self) -> Optional[Result]:
         # data size, is encrypted, is json, protocol
-        head = self.socket.recv(8)
+        head = self._recv(8)
         if head is None:
             return None
         if head == b'':
             return Result(False, False, 0, head)
         header = struct.unpack("I??H", head)
-        data = self.socket.recv(header[0])
+        data = self._recv(header[0])
         if data is None:
             return None
         encrypted = False
