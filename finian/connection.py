@@ -126,8 +126,11 @@ class Connection:
 
     def listen(self):
         while True:
-            result = self.recv()
-            if result is None:
+            try:
+                result = self.recv()
+                if result is None:
+                    raise ConnectionResetError("Connection broke")
+            except ConnectionResetError:
                 self._connection_broke_callback(self)
                 break
             if result.protocol == 0:
