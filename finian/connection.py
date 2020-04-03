@@ -122,7 +122,10 @@ class Connection:
         if isinstance(data, dict):
             data = json.dumps(data).encode()
             is_json = True
-        self.socket.send(data, is_json, protocol)
+        try:
+            self.socket.send(data, is_json, protocol)
+        except (BrokenPipeError, TimeoutError):
+            self._connection_broke_callback(self)
 
     def listen(self):
         while True:
@@ -130,7 +133,7 @@ class Connection:
                 result = self.recv()
                 if result is None:
                     raise ConnectionResetError("Connection broke")
-            except ConnectionResetError:
+            except (ConnectionResetError, TimeoutError):
                 self._connection_broke_callback(self)
                 break
             if result.protocol == 0:
